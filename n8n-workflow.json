@@ -1,0 +1,86 @@
+{
+  "name": "File Upload to Email Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "{{ $env.GMAIL_EMAIL }}",
+        "toEmail": "{{ $node.Webhook.json.recipientEmail }}",
+        "subject": "📎 File Attachment: {{ $node.Webhook.json.file.filename }}",
+        "textType": "html",
+        "htmlText": "<h2>File Attachment</h2><p>Hi,</p><p>{{ $node.Webhook.json.senderName }} has sent you a file via File Upload System.</p><p><strong>File Name:</strong> {{ $node.Webhook.json.file.filename }}<br><strong>File Size:</strong> {{ $node.Webhook.json.file.size }} bytes<br><strong>Sent At:</strong> {{ $node.Webhook.json.timestamp }}</p><p>Please find the attached file below.</p><p>Best regards,<br>File Upload System</p>",
+        "attachments": "{{ JSON.stringify([{filename: $node.Webhook.json.file.filename, contentType: $node.Webhook.json.file.mimetype, data: 'file://' + $node.Webhook.json.file.filepath}]) }}"
+      },
+      "id": "gmail",
+      "name": "Send Email with Attachment",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [550, 300],
+      "credentials": {
+        "gmailOAuth2": "gmail_oauth"
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "name": "message",
+              "value": "=File sent successfully to {{ $node.Webhook.json.recipientEmail }}",
+              "type": "string"
+            },
+            {
+              "name": "sentAt",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send Email with Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email with Attachment": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
