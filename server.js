@@ -56,12 +56,16 @@ app.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Recipient email is required' });
     }
 
-    // Prepare file data
+    // Read file and convert to base64
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const fileBase64 = fileBuffer.toString('base64');
+
+    // Prepare file data for n8n
     const fileData = {
       filename: req.file.originalname,
-      filepath: req.file.path,
-      size: req.file.size,
-      mimetype: req.file.mimetype
+      data: fileBase64,
+      mimetype: req.file.mimetype,
+      size: req.file.size
     };
 
     // Trigger n8n webhook

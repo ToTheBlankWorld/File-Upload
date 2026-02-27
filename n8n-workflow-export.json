@@ -1,0 +1,149 @@
+{
+  "name": "File Upload to Email (Option 1 - FIXED)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "file-upload-webhook",
+        "responseMode": "onReceived",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "id": "webhook-file-upload",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.recipientEmail }}",
+              "operation": "notEmpty"
+            }
+          ]
+        }
+      },
+      "id": "check-email",
+      "name": "Check Recipient Email",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Convert base64 to binary for attachment\nconst fileData = $json.file;\nif (fileData && fileData.data) {\n  // Decode base64\n  const buffer = Buffer.from(fileData.data, 'base64');\n  \n  // Create attachment object\n  return {\n    ...items[0].json,\n    attachments: [\n      {\n        name: fileData.filename,\n        data: buffer,\n        type: fileData.mimetype\n      }\n    ]\n  };\n}\nreturn $json;"
+      },
+      "id": "process-file",
+      "name": "Process File for Attachment",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.recipientEmail }}",
+        "subject": "📎 File Attachment Received",
+        "emailType": "HTML",
+        "message": "<h2>File Attachment</h2><p>{{ $json.senderName || 'Someone' }} has sent you a file.</p><p>Please find the attachment below.</p><p><strong>— File Upload System</strong></p>",
+        "options": {
+          "attachments": {
+            "attachmentProperties": [
+              {
+                "name": "={{ $json.attachments[0].name }}",
+                "data": "={{ $json.attachments[0].data }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "gmail-send",
+      "name": "Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        950,
+        260
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "TBlZOlruN00QWBmB",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "responseCode": 400,
+        "responseBody": "{ \"error\": \"recipientEmail is required\" }"
+      },
+      "id": "error-response",
+      "name": "Missing Email Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        950,
+        360
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check Recipient Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Recipient Email": {
+      "main": [
+        [
+          {
+            "node": "Process File for Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Missing Email Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process File for Attachment": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  }
+}
